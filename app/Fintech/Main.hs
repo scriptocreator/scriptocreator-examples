@@ -3,6 +3,7 @@ module Main where
 import System.Environment (getArgs)
 import Data.Maybe (isJust, fromJust)
 import Text.Read (readMaybe)
+import Text.Printf
 
 
 newtype Процент a = Процент a deriving (Show, Eq, Ord, Read)
@@ -11,15 +12,19 @@ data Заказ a = Заказ a | Заказ' a a deriving (Show, Eq, Ord, Read
 
 num % perc = (num / 100) * perc
 
-allow (Заказ orig) mPerc@(Процент perc) =
-    let newOrder = Заказ' orig orig
-    in allow newOrder mPerc
+allow :: Заказ Double -> Процент Double -> Int -> (Double, Double)
 
-allow (Заказ' orig transOrig) mPerc@(Процент perc)
+allow (Заказ orig) mPerc@(Процент perc) calc =
+    let newOrder = Заказ' orig orig
+    in allow newOrder mPerc calc
+
+allow (Заказ' orig transOrig) mPerc@(Процент perc) calc
+    | calc == 0 = error $ printf
+        "curTransTotal %f, newTransOrig %f, alligTotal %f, gap %f" curTransTotal newTransOrig alligTotal gap
     | alligTotal >= orig = (curTransTotal, gap)
     | otherwise =
         let correctX = Заказ' orig newTransOrig
-        in allow correctX mPerc
+        in allow correctX mPerc (pred calc)
 
     where curTransTotal = transOrig + (transOrig % perc)
           newTransOrig = transOrig + (orig - alligTotal)
@@ -52,5 +57,5 @@ main = do
         (ord, perc) = fromJust mAll
     
     if isJust mAll
-        then print $ allow ord perc
+        then print $ allow ord perc (-1)
         else return ()
