@@ -1,7 +1,7 @@
 module Main where
 
 import System.Environment (getArgs)
-import Data.Maybe (isJust, fromJust)
+import Data.Maybe (isJust, fromJust, fromMaybe)
 import Text.Read (readMaybe)
 import Text.Printf
 import Data.Word
@@ -11,20 +11,17 @@ newtype Процент a = Процент a deriving (Show, Eq, Ord, Read)
 data Заказ a = Заказ a | Заказ' a a deriving (Show, Eq, Ord, Read)
 
 
-data Mode a
+data Mode
     = Run
     | Stop
-    | Debug !a
+    | Debug !Word
     deriving (Show, Eq, Ord, Read)
 
-class NumFunctor f where
-  nmap :: (Num a, Eq a) => (a -> a) -> f a -> f a
-
-instance NumFunctor Mode where
-    nmap f (Debug 0) = Stop
-    nmap f (Debug calc) = Debug (f calc)
-    nmap _ Stop = Stop
-    nmap _ Run = Run
+stepMode :: Mode -> Mode
+stepMode (Debug 0) = Stop
+stepMode (Debug n) = Debug (pred n)
+stepMode Stop      = Stop
+stepMode Run       = Run
 
 
 data Step = Step
@@ -35,10 +32,14 @@ data Step = Step
     }
 
 compute :: Заказ Double -> Процент Double -> Step
-compute (Заказ' orig transOrig) (Процент perc)
+compute order (Процент perc)
     = Step curTransTotal newTransOrig alligTotal gap
     
-    where curTransTotal = transOrig + (transOrig % perc)
+    where (orig, transOrig) = case order of
+            Заказ orig -> (orig, orig)
+            Заказ' orig transOrig -> (orig, transOrig)
+        
+          curTransTotal = transOrig + (transOrig % perc)
           newTransOrig  = transOrig + (orig - alligTotal)
           alligTotal    = curTransTotal - (curTransTotal % perc)
           gap           = curTransTotal - orig
@@ -52,7 +53,7 @@ infixl 1 $.
 f $. x = f x
 
 
-allow :: Заказ Double -> Процент Double -> Mode Word -> (Double, Double)
+allow :: Заказ Double -> Процент Double -> Mode -> (Double, Double)
 
 allow (Заказ orig) perc calc = allow (Заказ' orig orig) perc calc
 
@@ -71,10 +72,10 @@ allow order@(Заказ' orig _) perc calc
 
     where s = compute order perc
           correctX = Заказ' orig (newTransOrig s)
-          newCalc = nmap pred calc
+          newCalc = stepMode calc
 
 -- => лево = fst; право = snd
--- => счёт = allow (Заказ 1870) (Процент 2)
+-- => счёт = allow (Заказ 1870) (Процент 2) Run
 -- => счёт
 -- (1908.1632653061224,38.16326530612241)
 -- => доказательство = (лево счёт / право счёт) * 2
@@ -85,13 +86,19 @@ allow order@(Заказ' orig _) perc calc
 main :: IO ()
 main = do
     args <- getArgs
-    case args of
-        (a:b:_) ->
-            let mOrdPerc :: (Maybe (Заказ Double), Maybe (Процент Double))
-                mOrdPerc = (readMaybe a, readMaybe b)
+
+    let requestHandler :: (String, String, Maybe String) -> IO ()
+        requestHandler (a, b, mC) =
+            let mOrdPerc :: (Maybe (Заказ Double), Maybe (Процент Double), Maybe (Maybe Mode))
+                mOrdPerc = (readMaybe a, readMaybe b, fmap readMaybe mC)
 
             in case mOrdPerc of
-                (Just ord, Just perc) -> print (allow ord perc Run)
-                _                     -> pure ()
+                (Just ord, Just perc, mmM) | fromMaybe True (fmap isJust mmM) ->
+                    let mM = fmap fromJust mmM
+                    in print $ allow ord perc $ fromMaybe Run mM
+                _ -> pure ()
 
+    case args of
+        (a:b:c:_) -> requestHandler (a, b, Just c)
+        (a:b:_) -> requestHandler (a, b, Nothing)
         _ -> pure ()
