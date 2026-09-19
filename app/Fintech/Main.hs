@@ -17,6 +17,10 @@ data Mode
     | Debug !Word
     deriving (Show, Eq, Ord, Read)
 
+startMode :: Mode -> Mode
+startMode (Debug 0) = Stop
+startMode mode = mode
+
 stepMode :: Mode -> Mode
 stepMode (Debug 0) = Stop
 stepMode (Debug n) = Debug (pred n)
@@ -55,7 +59,7 @@ f $. x = f x
 
 allow :: Заказ Double -> Процент Double -> Mode -> (Double, Double)
 
-allow (Заказ orig) perc calc = allow (Заказ' orig orig) perc calc
+allow (Заказ orig) perc calc = allow (Заказ' orig orig) perc $ startMode calc
 
 allow order perc Stop = error $ printf
     $. "curTransTotal = %f, newTransOrig = %f, alligTotal = %f, gap = %f"
