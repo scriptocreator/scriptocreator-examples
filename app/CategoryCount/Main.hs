@@ -106,7 +106,7 @@ q a = "{" ++ a ++ "}"
 
 
 identCat :: Triad -> String
-identCat TriadNull = createString Нич TriadNull +++ "="
+identCat TriadNull = q (createString Нич TriadNull) +++ "="
 identCat (TriadOne (ArgOne a) TypeLeft)         = q (createString Быт a) +++ "="
 identCat (TriadOne (ArgOne a) TypeInside)       = q (createString При a) +++ "="
 identCat (TriadOne (ArgOne a) TypeRight)        = q (createString Общ a) +++ "="
@@ -147,9 +147,14 @@ createString Общ (TriadThree ArgVoid) = текст Сил +++ текст От
 createString c t = error $ printf "createString: Категории отсутствуют: %s %s" (show c) (show t)
 
 
+addNumber :: Int -> [String] -> [String]
+addNumber _ [] = []
+addNumber num (x:xs) = (show num ++ x) : addNumber (succ num) xs
+
+
 main :: IO ()
 main = do
     let allCat = createNest combBD
-        allText = unlines $ fmap identCat allCat
+        allText = unlines $ addNumber 1 $ fmap identCat allCat
 
     writeFile "./Счёт категорий.txt" allText
