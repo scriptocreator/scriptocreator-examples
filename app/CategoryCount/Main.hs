@@ -140,7 +140,7 @@ createString Общ (TriadOne ArgVoid TypeLeft) = текст Сил
 createString Общ (TriadOne ArgVoid TypeInside) = текст Отн
 createString Общ (TriadTwo ArgVoid TypeLeft) = текст Сил +++ текст Отн
 createString Общ (TriadOne ArgVoid TypeRight) = текст Над
-createString Общ (TriadTwo ArgVoid TypeOutside) = текст Сил +++ текст Отн
+createString Общ (TriadTwo ArgVoid TypeOutside) = текст Сил +++ текст Над
 createString Общ (TriadTwo ArgVoid TypeRight) = текст Отн +++ текст Над
 createString Общ (TriadThree ArgVoid) = текст Сил +++ текст Отн +++ текст Над
 
