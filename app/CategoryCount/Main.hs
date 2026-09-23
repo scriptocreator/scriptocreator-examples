@@ -1,32 +1,44 @@
+{-# LANGUAGE TypeOperators #-}
 module Main where
 
 import Data.Either
 import Text.Printf
 
 
---data Void = Void (Show, Eq, Ord, Read)
+data Void = Void deriving (Show, Eq, Ord, Read)
+newtype Id a = Id a deriving (Show, Eq, Ord, Read)
+
 data TypeTriad
-    = TypeVoid
-    | TypeLeft
+    = TypeLeft
     | TypeInside
     | TypeOutside
     | TypeRight
     deriving (Show, Eq, Ord, Read)
 
 data ArgTriad
-    = ArgVoid
-    | ArgOne Triad
-    | ArgTwo Triad Triad
-    | ArgThree Triad Triad Triad
+    = ArgOne TriadEnd
+    | ArgTwo TriadEnd TriadEnd
+    | ArgThree TriadEnd TriadEnd TriadEnd
     deriving (Show, Eq, Ord, Read)
 
-data Triad
+data Triad a
     = TriadNull
-    | TriadOne {arg :: ArgTriad, dir :: TypeTriad}
-    | TriadTwo {arg :: ArgTriad, dir :: TypeTriad}
-    | TriadThree {arg :: ArgTriad}
+    | TriadOne {arg :: a, dir :: TypeTriad}
+    | TriadTwo {arg :: a, dir :: TypeTriad}
+    | TriadThree {arg :: a}
     -- | Triad (spontaneity :: Triad, mediation :: Triad, sublation :: Triad)
     deriving (Show, Eq, Ord, Read)
+
+type TriadEnd = Triad Void
+type TriadArg = Triad ArgTriad
+
+data a :! b
+    = (Maybe a) :! b
+    deriving (Show, Eq, Ord, Read)
+
+instance Functor Triad where
+    fmap _ TriadNull = TriadNull
+    fmap f t = t {arg = f $ arg t}
 
 
 data Category
@@ -44,21 +56,23 @@ n0 = False
 n1 = True
 --f c a b c = c a b c
 
+combBD :: [TriadEnd]
 combBD =
     [ TriadNull
-    , TriadOne ArgVoid TypeLeft     --(n1, n0, n0)
-    , TriadOne ArgVoid TypeInside   --(n0, n1, n0)
-    , TriadTwo ArgVoid TypeLeft     --(n1, n1, n0)
-    , TriadOne ArgVoid TypeRight    --(n0, n0, n1)
-    , TriadTwo ArgVoid TypeOutside  --(n1, n0, n1)
-    , TriadTwo ArgVoid TypeRight    --(n0, n1, n1)
-    , TriadThree ArgVoid
+    , TriadOne Void TypeLeft     --(n1, n0, n0)
+    , TriadOne Void TypeInside   --(n0, n1, n0)
+    , TriadTwo Void TypeLeft     --(n1, n1, n0)
+    , TriadOne Void TypeRight    --(n0, n0, n1)
+    , TriadTwo Void TypeOutside  --(n1, n0, n1)
+    , TriadTwo Void TypeRight    --(n0, n1, n1)
+    , TriadThree Void
     ]
 
 natCombBD = tail combBD
-contNatCompBD :: [[Triad]]
+contNatCompBD :: [[TriadEnd]]
 contNatCompBD = fmap return natCombBD
 
+createArg :: TriadEnd -> [TriadEnd] -> TriadArg
 createArg TriadNull _ = TriadNull
 createArg t@(TriadOne _ _) [a]       = t {arg = ArgOne a}
 createArg t@(TriadTwo _ _) [a, b]    = t {arg = ArgTwo a b}
@@ -66,24 +80,24 @@ createArg t@(TriadThree _) [a, b, c] = t {arg = ArgThree a b c}
 createArg t arg = error $ printf "createArg: Аргументы не совпадают: %s %s" (show t) (show arg)
 
 
-createNest :: [Triad] -> [Triad] 
+createNest :: [TriadEnd] -> [Triad [TriadArg]] 
 createNest [] = []
 createNest (TriadNull:ts) = TriadNull : createNest ts
 
 createNest (t@(TriadOne _ _):ts)
-    = fmap (createArg t) contNatCompBD
-    ++ createNest ts
+    = t {arg = fmap (createArg t) contNatCompBD}
+    : createNest ts
 
 createNest (t@(TriadTwo _ _):ts)
-    = fmap (createArg t) (cycleArg 2 contNatCompBD)
-    ++ createNest ts
+    = t {arg = fmap (createArg t) (cycleArg 2 contNatCompBD)}
+    : createNest ts
 
 createNest (t@(TriadThree _):ts)
-    = fmap (createArg t) (cycleArg 3 contNatCompBD)
-    ++ createNest ts
+    = t {arg = fmap (createArg t) (cycleArg 3 contNatCompBD)}
+    : createNest ts
 
 
-cycleArg :: Int -> [[Triad]] -> [[Triad]]
+cycleArg :: Int -> [[TriadEnd]] -> [[TriadEnd]]
 cycleArg 1 cont = cont
 cycleArg n cont = cycleArg (pred n) $ infinityElem cont
 
@@ -92,69 +106,97 @@ cycleArg n cont = cycleArg (pred n) $ infinityElem cont
             = infinityCont natCombBD (repeat cont)
             ++ infinityElem cs
 
-          infinityCont :: [Triad] -> [[Triad]] -> [[Triad]]
+          infinityCont :: [TriadEnd] -> [[TriadEnd]] -> [[TriadEnd]]
           infinityCont [] _ = []
           infinityCont (el:es) (cont:cs)
             = (el : cont)
             : infinityCont es cs
 
 
+calcNumber :: [Triad [TriadArg]] -> Int -> [Int :! (Triad [Int :! TriadArg])]
+calcNumber [] _ = []
+calcNumber (TriadNull:ts) num = (Just num) :! TriadNull : calcNumber ts (succ num)
+calcNumber (t:ts) num = (Nothing :! newT) : calcNumber ts newNum
+
+    where newNum = num + length (arg t)
+          newArg = nesCalc (arg t) num
+          newT = t {arg = newArg}
+          
+          nesCalc :: [TriadArg] -> Int -> [Int :! TriadArg]
+          nesCalc [] _ = []
+          nesCalc (t:ts) num = (Just num) :! t : nesCalc ts (succ num)
+
+
 (+++) :: String -> String -> String
 a +++ b = a ++ " " ++ b
+
+(+|+) :: String -> String -> String
+a +|+ b = a ++ "\n" ++ b
+
 текст = show
 q a = "{" ++ a ++ "}"
 
+ls Nothing = ""
+ls (Just a) = show a
 
-identCat :: Triad -> String
-identCat TriadNull = q (createString Нич TriadNull) +++ "="
-identCat (TriadOne (ArgOne a) TypeLeft)         = q (createString Быт a) +++ "="
-identCat (TriadOne (ArgOne a) TypeInside)       = q (createString При a) +++ "="
-identCat (TriadOne (ArgOne a) TypeRight)        = q (createString Общ a) +++ "="
-identCat (TriadTwo (ArgTwo a b) TypeLeft)       = q (createString Быт a) ++ q (createString При b) +++ "="
-identCat (TriadTwo (ArgTwo a b) TypeOutside)    = q (createString Быт a) ++ q (createString Общ b) +++ "="
-identCat (TriadTwo (ArgTwo a b) TypeRight)      = q (createString При a) ++ q (createString Общ b) +++ "="
-identCat (TriadThree (ArgThree a b c))          = q (createString Быт a) ++ q (createString При b) ++ q (createString Общ c) +++ "="
+
+identCont :: Int :! (Triad [Int :! TriadArg]) -> String
+identCont (n :! TriadNull) = ls n ++ q (createStr Нич TriadNull) +++ "="
+identCont (_ :! TriadOne arg TypeLeft) = ":: Бытие" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadOne arg TypeInside) = ":: Природа" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadOne arg TypeRight) = ":: Общество" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadTwo arg TypeLeft) = ":: Бытие Природа" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadTwo arg TypeOutside) = ":: Бытие Общество" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadTwo arg TypeRight) = ":: Природа Общество" +|+ unlines (fmap identCat arg)
+identCont (_ :! TriadThree arg) = ":: Бытие Природа Общество" +|+ unlines (fmap identCat arg)
+
+
+identCat :: (Int :! TriadArg) -> String
+identCat (n :! TriadNull)                           = ls n ++ q (createStr Нич TriadNull) +++ "="
+identCat (n :! TriadOne (ArgOne a) TypeLeft)        = ls n ++ q (createStr Быт a) +++ "="
+identCat (n :! TriadOne (ArgOne a) TypeInside)      = ls n ++ q (createStr При a) +++ "="
+identCat (n :! TriadOne (ArgOne a) TypeRight)       = ls n ++ q (createStr Общ a) +++ "="
+identCat (n :! TriadTwo (ArgTwo a b) TypeLeft)      = ls n ++ q (createStr Быт a) ++ q (createStr При b) +++ "="
+identCat (n :! TriadTwo (ArgTwo a b) TypeOutside)   = ls n ++ q (createStr Быт a) ++ q (createStr Общ b) +++ "="
+identCat (n :! TriadTwo (ArgTwo a b) TypeRight)     = ls n ++ q (createStr При a) ++ q (createStr Общ b) +++ "="
+identCat (n :! TriadThree (ArgThree a b c))    = ls n ++ q (createStr Быт a) ++ q (createStr При b) ++ q (createStr Общ c) +++ "="
 identCat t = error $ printf "identCat: Параметры не совпадают: %s" (show t)
 
 
-createString :: Category -> Triad -> String
-createString Нич TriadNull = текст Ничего
+createStr :: Category -> TriadEnd -> String
+createStr Нич TriadNull                   = текст Ничего
 
-createString Быт (TriadOne ArgVoid TypeLeft) = текст Мат
-createString Быт (TriadOne ArgVoid TypeInside) = текст Дви
-createString Быт (TriadTwo ArgVoid TypeLeft) = текст Мат +++ текст Дви
-createString Быт (TriadOne ArgVoid TypeRight) = текст ПроВре
-createString Быт (TriadTwo ArgVoid TypeOutside) = текст Мат +++ текст ПроВре
-createString Быт (TriadTwo ArgVoid TypeRight) = текст Дви +++ текст ПроВре
-createString Быт (TriadThree ArgVoid) = текст Мат +++ текст Дви +++ текст ПроВре
+createStr Быт (TriadOne Void TypeLeft)    = текст Мат
+createStr Быт (TriadOne Void TypeInside)  = текст Дви
+createStr Быт (TriadTwo Void TypeLeft)    = текст Мат +++ текст Дви
+createStr Быт (TriadOne Void TypeRight)   = текст ПроВре
+createStr Быт (TriadTwo Void TypeOutside) = текст Мат +++ текст ПроВре
+createStr Быт (TriadTwo Void TypeRight)   = текст Дви +++ текст ПроВре
+createStr Быт (TriadThree Void)           = текст Мат +++ текст Дви +++ текст ПроВре
 
-createString При (TriadOne ArgVoid TypeLeft) = текст Мех
-createString При (TriadOne ArgVoid TypeInside) = текст Хим
-createString При (TriadTwo ArgVoid TypeLeft) = текст Мех +++ текст Хим
-createString При (TriadOne ArgVoid TypeRight) = текст Орг
-createString При (TriadTwo ArgVoid TypeOutside) = текст Мех +++ текст Орг
-createString При (TriadTwo ArgVoid TypeRight) = текст Хим +++ текст Орг
-createString При (TriadThree ArgVoid) = текст Мех +++ текст Хим +++ текст Орг
+createStr При (TriadOne Void TypeLeft)    = текст Мех
+createStr При (TriadOne Void TypeInside)  = текст Хим
+createStr При (TriadTwo Void TypeLeft)    = текст Мех +++ текст Хим
+createStr При (TriadOne Void TypeRight)   = текст Орг
+createStr При (TriadTwo Void TypeOutside) = текст Мех +++ текст Орг
+createStr При (TriadTwo Void TypeRight)   = текст Хим +++ текст Орг
+createStr При (TriadThree Void)           = текст Мех +++ текст Хим +++ текст Орг
 
-createString Общ (TriadOne ArgVoid TypeLeft) = текст Сил
-createString Общ (TriadOne ArgVoid TypeInside) = текст Отн
-createString Общ (TriadTwo ArgVoid TypeLeft) = текст Сил +++ текст Отн
-createString Общ (TriadOne ArgVoid TypeRight) = текст Над
-createString Общ (TriadTwo ArgVoid TypeOutside) = текст Сил +++ текст Над
-createString Общ (TriadTwo ArgVoid TypeRight) = текст Отн +++ текст Над
-createString Общ (TriadThree ArgVoid) = текст Сил +++ текст Отн +++ текст Над
+createStr Общ (TriadOne Void TypeLeft)    = текст Сил
+createStr Общ (TriadOne Void TypeInside)  = текст Отн
+createStr Общ (TriadTwo Void TypeLeft)    = текст Сил +++ текст Отн
+createStr Общ (TriadOne Void TypeRight)   = текст Над
+createStr Общ (TriadTwo Void TypeOutside) = текст Сил +++ текст Над
+createStr Общ (TriadTwo Void TypeRight)   = текст Отн +++ текст Над
+createStr Общ (TriadThree Void)           = текст Сил +++ текст Отн +++ текст Над
 
-createString c t = error $ printf "createString: Категории отсутствуют: %s %s" (show c) (show t)
-
-
-addNumber :: Int -> [String] -> [String]
-addNumber _ [] = []
-addNumber num (x:xs) = (show num ++ x) : addNumber (succ num) xs
+createStr c t = error $ printf "createStr: Категории отсутствуют: %s %s" (show c) (show t)
 
 
 main :: IO ()
 main = do
     let allCat = createNest combBD
-        allText = unlines $ addNumber 1 $ fmap identCat allCat
+        allCalc = calcNumber allCat 1
+        allText = unlines $ fmap identCont allCalc
 
     writeFile "./Счёт категорий.txt" allText
