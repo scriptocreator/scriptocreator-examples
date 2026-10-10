@@ -55,7 +55,6 @@ executables:
     dependencies:
     - text
 
-  
   CategoryCount:
     main:                Main.hs
     source-dirs:         app/CategoryCount
@@ -65,7 +64,16 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - text
-
+    
+  PatternMatching:
+    main:                Main.hs
+    source-dirs:         app/PatternMatching
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - containers
 
 tests:
   scriptocreator-examples-test:
