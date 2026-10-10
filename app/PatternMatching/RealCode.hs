@@ -59,22 +59,25 @@ process values args = fromJust $ Prelude.foldl' calc Nothing pars
     where pars :: [(Cons, Map.IntMap ListMap)]
           pars = zip values args
 
-          calc :: Maybe IntSet -> (Cons, Map.IntMap ListMap) -> Maybe IntSet
-          calc mPredDefs (ConsVoid tag, argMass) = case el s tag of
-            Just (List defs) -> Just $ updDefs s defs $ predDefs s <+> defs
 
-            _ -> error "Нарушение логики"
+calc :: Maybe IntSet -> (Cons, Map.IntMap ListMap) -> Maybe IntSet
 
-            where s = compute mPredDefs argMass
+calc mPredDefs (ConsVoid tag, argMass) = case el s tag of
+    Just (List defs) -> Just $ updDefs s defs $ predDefs s <+> defs
 
-          calc mPredDefs (Cons tag nesTags, argMass) = case el s tag of
-            Just (ListCons defs nesArgsMass) ->
-                let nesteds = zip nesTags nesArgsMass
-                in fmapDefs s $ fmap (defs<++>) $ Prelude.foldl' calc Nothing nesteds
+    _ -> error "Нарушение логики"
 
-            _ -> error "Нарушение логики"
-            
-            where s = compute mPredDefs argMass
+    where s = compute mPredDefs argMass
+
+calc mPredDefs (Cons tag nesTags, argMass) = case el s tag of
+    Just (ListCons defs nesArgsMass) ->
+        let nesteds = zip nesTags nesArgsMass
+        in fmapDefs s $ fmap (defs<++>) $ Prelude.foldl' calc Nothing nesteds
+
+    _ -> error "Нарушение логики"
+
+    where s = compute mPredDefs argMass
+
 
 -- Что равносильно (Left Nothing) + True
 values = [Cons 1 [ConsVoid 1], ConsVoid 2]
