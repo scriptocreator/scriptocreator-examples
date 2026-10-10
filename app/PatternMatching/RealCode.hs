@@ -32,6 +32,7 @@ data Cons
     deriving (Show, Eq, Ord)
 
 infixl 6 <+>
+infixl 6 <->
 
 (<+>) :: Eq a => [a] -> [a] -> [a]
 (<+>) [] _ = []
