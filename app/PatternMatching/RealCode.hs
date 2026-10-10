@@ -37,8 +37,21 @@ data Cons
 (<++>) = Set.union
 
 
--- Что равносильно (Left Nothing) + True
-values = [Cons 1 [ConsVoid 1], ConsVoid 2]
+data Step = Step
+    { el :: Int -> Maybe ListMap
+    , predDefs :: IntSet
+    , fmapDefs :: Maybe IntSet -> Maybe IntSet
+    , updDefs :: IntSet -> IntSet -> IntSet}
+
+compute :: Maybe IntSet -> Map.IntMap ListMap -> Step
+compute mPredDefs argMass
+    = Step el predDefs fmapDefs updDefs
+    
+    where el tag = Map.lookup tag argMass
+          predDefs = fromJust mPredDefs
+          fmapDefs mDefs = if isJust mPredDefs then fmap (predDefs<->) mDefs else mDefs
+          updDefs defs newDefs = if isJust mPredDefs then newDefs else defs
+
 
 process :: [Cons] -> [Map.IntMap ListMap] -> IntSet
 process values args = fromJust $ Prelude.foldl' calc Nothing pars
@@ -47,24 +60,24 @@ process values args = fromJust $ Prelude.foldl' calc Nothing pars
           pars = zip values args
 
           calc :: Maybe IntSet -> (Cons, Map.IntMap ListMap) -> Maybe IntSet
-          calc mPredDefs (value, argMass)
-            = case value of
-                ConsVoid tag -> case el tag of
-                    Just (List defs) -> Just $ updDefs defs $ predDefs <+> defs
-                    _ -> error "Нарушение логики"
+          calc mPredDefs (ConsVoid tag, argMass) = case el s tag of
+            Just (List defs) -> Just $ updDefs s defs $ predDefs s <+> defs
 
-                Cons tag nesTags -> case el tag of
-                    Just (ListCons defs nesArgsMass) ->
-                        let nesteds = zip nesTags nesArgsMass
-                        in fmapDefs $ fmap (defs<++>) $ Prelude.foldl' calc Nothing nesteds
+            _ -> error "Нарушение логики"
 
-                    _ -> error "Нарушение логики"
+            where s = compute mPredDefs argMass
+
+          calc mPredDefs (Cons tag nesTags, argMass) = case el s tag of
+            Just (ListCons defs nesArgsMass) ->
+                let nesteds = zip nesTags nesArgsMass
+                in fmapDefs s $ fmap (defs<++>) $ Prelude.foldl' calc Nothing nesteds
+
+            _ -> error "Нарушение логики"
             
-            where el tag = Map.lookup tag argMass
-                  predDefs = fromJust mPredDefs
-                  fmapDefs :: Maybe IntSet -> Maybe IntSet
-                  fmapDefs mDefs = if isJust mPredDefs then fmap (predDefs<->) mDefs else mDefs
-                  updDefs mDefs newDefs = if isJust mPredDefs then newDefs else mDefs
+            where s = compute mPredDefs argMass
+
+-- Что равносильно (Left Nothing) + True
+values = [Cons 1 [ConsVoid 1], ConsVoid 2]
 
 funcSim :: [Cons] -> String
 funcSim ins = (funcBD!!) . Set.findMin $ process ins [arg1, arg2]
