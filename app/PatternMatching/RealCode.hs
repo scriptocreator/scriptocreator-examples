@@ -69,17 +69,18 @@ process values args = fromJust $ Prelude.foldl calc Nothing pars
                 Cons tag nesTags -> case el tag of
                     Just (ListCons [] nesArgsMass) ->
                         let nesteds = zip nesTags nesArgsMass
-                        in Prelude.foldl calc mPredDefs nesteds
+                        in fmapDefs $ Prelude.foldl calc Nothing nesteds
 
                     Just (ListCons defs nesArgsMass) ->
                         let nesteds = zip nesTags nesArgsMass
-                            newMDefs = Just $ updDefs defs $ predDefs <-> defs
-                        in Prelude.foldl calc newMDefs nesteds
+                        in fmapDefs $ fmap (defs++) $ Prelude.foldl calc Nothing nesteds
 
                     _ -> error "Нарушение логики"
             
             where el tag = Map.lookup tag argMass
                   predDefs = fromJust mPredDefs
+                  fmapDefs :: Maybe [Int] -> Maybe [Int]
+                  fmapDefs defs = if isJust mPredDefs then fmap (predDefs<->) defs else id defs
                   updDefs defs newDefs = if isJust mPredDefs then newDefs else defs
 
 funcSim :: [Cons] -> String
