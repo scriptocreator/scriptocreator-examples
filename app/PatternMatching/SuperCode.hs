@@ -23,8 +23,8 @@ arg1 = V.fromList
     [(True, bit 0, 0)]
 
 arg1field1 = V.fromList
-    [(False, bit 1, 0)
-    ,(False, bit 2, 0)]
+    [(False, bit 2, 0)
+    ,(False, bit 1, 0)]
 
 arg2 = V.fromList
     [(False, bit 0, 0)
