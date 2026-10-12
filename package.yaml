@@ -74,6 +74,8 @@ executables:
     - -with-rtsopts=-N
     dependencies:
     - containers
+    - vector
+    - extra
 
 tests:
   scriptocreator-examples-test:
