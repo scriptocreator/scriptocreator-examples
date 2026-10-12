@@ -1,32 +1,36 @@
 module SuperCode where
 
 import Sample
+import Scriptocreator.MayEither
 
 import Data.Word
 import Data.Bits
-import Data.Vector.Unboxed as V
+import Data.Vector.Strict as V
+import Data.Vector.Unboxed as VU
+import Data.Vector.Generic as G
 import Data.Tuple.Extra (fst3, snd3, thd3)
 import Data.Maybe
+import Text.Printf
 
 
 type ListMap = (Bool, Word64, Int)
 type Tag = Int
 
 
-argsBD :: [V.Vector ListMap]
-argsBD = [arg1, arg2]
+argsBD :: V.Vector (VU.Vector ListMap)
+argsBD = V.fromList [arg1, arg2]
 
-nesArgsBD :: [[V.Vector ListMap]]
-nesArgsBD = [[arg1field1]]
+nesArgsBD :: V.Vector (V.Vector (VU.Vector ListMap))
+nesArgsBD = V.fromList [V.fromList [arg1field1]]
 
-arg1 = V.fromList
+arg1 = VU.fromList
     [(True, bit 0, 0)]
 
-arg1field1 = V.fromList
+arg1field1 = VU.fromList
     [(False, bit 2, 0)
     ,(False, bit 1, 0)]
 
-arg2 = V.fromList
+arg2 = VU.fromList
     [(False, bit 0, 0)
     ,(False, bit 1 .|. bit 2, 0)]
 
@@ -44,50 +48,54 @@ isEmpty = (== 0)
 firstDef = countTrailingZeros
 
 
-data Step = Step
-    { el :: Int -> ListMap
-    , predDefs :: Word64
-    , fmapDefs :: Maybe Word64 -> Maybe Word64
-    , updDefs :: Word64 -> Word64 -> Word64}
+process :: V.Vector Cons -> V.Vector (VU.Vector ListMap) -> Word64
+process values args = case result of
+    MyLeft err -> error err
+    MyRight res -> res
 
-compute :: Maybe Word64 -> V.Vector ListMap -> Step
-compute mPredDefs argMass
-    = Step el predDefs fmapDefs updDefs
-    
-    where el tag = argMass V.! pred tag
-          predDefs = fromJust mPredDefs
-          fmapDefs mDefs = if isJust mPredDefs then fmap (predDefs<->) mDefs else mDefs
-          updDefs defs newDefs = if isJust mPredDefs then newDefs else defs
+    where pars :: V.Vector (Cons, VU.Vector ListMap)
+          pars = G.zip values args
+
+          result = G.foldl' calc MyNothing pars
 
 
-process :: [Cons] -> [V.Vector ListMap] -> Word64
-process values args = fromJust $ Prelude.foldl' calc Nothing pars
+err = "Нарушение логики: (%s) != (%s)"
 
-    where pars :: [(Cons, V.Vector ListMap)]
-          pars = Prelude.zip values args
+calc :: MayEither String Word64 -> (Cons, VU.Vector ListMap) -> MayEither String Word64
 
+calc MyNothing cons@(ConsVoid tag, argMass)
+    = case argMass VU.! pred tag of
+        (False, defs, _) -> MyRight defs
 
-calc :: Maybe Word64 -> (Cons, V.Vector ListMap) -> Maybe Word64
+        insErr -> MyLeft $ printf err (show cons) (show insErr)
 
-calc mPredDefs (ConsVoid tag, argMass) = case el s tag of
-    (False, defs, _) -> Just $ updDefs s defs $ predDefs s <+> defs
+calc (MyRight predDefs) cons@(ConsVoid tag, argMass)
+    = case argMass VU.! pred tag of
+        (False, defs, _) -> MyRight $ predDefs <+> defs
 
-    _ -> error "Нарушение логики"
+        insErr -> MyLeft $ printf err (show cons) (show insErr)
 
-    where s = compute mPredDefs argMass
+calc MyNothing cons@(Cons tag nesTags, argMass) = case argMass VU.! pred tag of
+    (True, defs, nesArgsIndMass) ->
+        let nesArgMass = nesArgsBD V.! nesArgsIndMass
+            nesteds = G.zip (V.fromList nesTags) nesArgMass
+        in fmap (defs<++>) $ G.foldl' calc MyNothing nesteds
 
-calc mPredDefs (Cons tag nesTags, argMass) = case el s tag of
-    (True, defs, nesArgsMass) ->
-        let nesteds = Prelude.zip nesTags $ nesArgsBD !! nesArgsMass
-        in fmapDefs s $ fmap (defs<++>) $ Prelude.foldl' calc Nothing nesteds
+    insErr -> MyLeft $ printf err (show cons) (show insErr)
 
-    _ -> error "Нарушение логики"
+calc (MyRight predDefs) cons@(Cons tag nesTags, argMass) = case argMass VU.! pred tag of
+    (True, defs, nesArgsIndMass) ->
+        let nesArgMass = nesArgsBD V.! nesArgsIndMass
+            nesteds = G.zip (V.fromList nesTags) nesArgMass
+        in fmap (predDefs<->) $ fmap (defs<++>) $ G.foldl' calc MyNothing nesteds
 
-    where s = compute mPredDefs argMass
+    insErr -> MyLeft $ printf err (show cons) (show insErr)
+
+calc (MyLeft lineErr) _ = MyLeft lineErr
 
 
 -- Что равносильно (Left Nothing) + True
-values = [Cons 1 [ConsVoid 1], ConsVoid 2]
+values = V.fromList [Cons 1 [ConsVoid 1], ConsVoid 2]
 
-funcSim :: [Cons] -> String
+funcSim :: V.Vector Cons -> String
 funcSim ins = (funcBD!!) . firstDef $ process ins argsBD

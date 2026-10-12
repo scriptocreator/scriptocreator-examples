@@ -1,10 +1,10 @@
 name:                scriptocreator-examples
 version:             0.1.0.0
-github:              "githubuser/scriptocreator-examples"
+github:              "scriptocreator/scriptocreator-examples"
 license:             BSD-3-Clause
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2026 Author name here"
+author:              "Andrey Boyarkin"
+maintainer:          "andrey.boyarkin1999@gmail.com"
+copyright:           "2026 Andrey Boyarkin"
 
 extra-source-files:
 - README.md
@@ -33,6 +33,11 @@ ghc-options:
 - -Wpartial-fields
 - -Wredundant-constraints
 
+library:
+  source-dirs: src
+  exposed-modules:
+    - Scriptocreator.MayEither
+
 executables:
   RussianWords:
     main:                Main.hs
@@ -42,6 +47,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - scriptocreator-examples
     - mtl
     - text
   
@@ -53,6 +59,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - scriptocreator-examples
     - text
 
   CategoryCount:
@@ -63,6 +70,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - scriptocreator-examples
     - text
     
   PatternMatching:
@@ -73,6 +81,7 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
+    - scriptocreator-examples
     - containers
     - vector
     - extra

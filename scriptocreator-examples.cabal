@@ -7,11 +7,11 @@ cabal-version: 2.2
 name:           scriptocreator-examples
 version:        0.1.0.0
 description:    Please see the README on GitHub at <https://github.com/githubuser/scriptocreator-examples#readme>
-homepage:       https://github.com/githubuser/scriptocreator-examples#readme
-bug-reports:    https://github.com/githubuser/scriptocreator-examples/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2026 Author name here
+homepage:       https://github.com/scriptocreator/scriptocreator-examples#readme
+bug-reports:    https://github.com/scriptocreator/scriptocreator-examples/issues
+author:         Andrey Boyarkin
+maintainer:     andrey.boyarkin1999@gmail.com
+copyright:      2026 Andrey Boyarkin
 license:        BSD-3-Clause
 license-file:   LICENSE
 build-type:     Simple
@@ -21,7 +21,21 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/scriptocreator-examples
+  location: https://github.com/scriptocreator/scriptocreator-examples
+
+library
+  exposed-modules:
+      Scriptocreator.MayEither
+  other-modules:
+      Paths_scriptocreator_examples
+  autogen-modules:
+      Paths_scriptocreator_examples
+  hs-source-dirs:
+      src
+  ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
+  build-depends:
+      base >=4.7 && <5
+  default-language: Haskell2010
 
 executable CategoryCount
   main-is: Main.hs
@@ -34,6 +48,7 @@ executable CategoryCount
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , scriptocreator-examples
     , text
   default-language: Haskell2010
 
@@ -48,6 +63,7 @@ executable Fintech
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , scriptocreator-examples
     , text
   default-language: Haskell2010
 
@@ -68,6 +84,7 @@ executable PatternMatching
       base >=4.7 && <5
     , containers
     , extra
+    , scriptocreator-examples
     , vector
   default-language: Haskell2010
 
@@ -83,6 +100,7 @@ executable RussianWords
   build-depends:
       base >=4.7 && <5
     , mtl
+    , scriptocreator-examples
     , text
   default-language: Haskell2010
 
