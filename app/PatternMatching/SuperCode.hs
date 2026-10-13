@@ -37,7 +37,7 @@ arg2 = VU.fromList
 
 data Cons
     = ConsVoid Tag
-    | Cons Tag [Cons]
+    | Cons Tag (V.Vector Cons)
     deriving (Show, Eq, Ord)
 
 (<+>) = (.&.)
@@ -78,7 +78,7 @@ calc (MyRight predDefs) cons@(ConsVoid tag, argMass)
 calc MyNothing cons@(Cons tag nesTags, argMass) = case argMass VU.! pred tag of
     (True, defs, nesArgsIndMass) ->
         let nesArgMass = nesArgsBD V.! nesArgsIndMass
-            nesteds = G.zip (V.fromList nesTags) nesArgMass
+            nesteds = G.zip nesTags nesArgMass
         in fmap (defs<++>) $ G.foldl' calc MyNothing nesteds
 
     insErr -> MyLeft $ printf err (show cons) (show insErr)
@@ -86,7 +86,7 @@ calc MyNothing cons@(Cons tag nesTags, argMass) = case argMass VU.! pred tag of
 calc (MyRight predDefs) cons@(Cons tag nesTags, argMass) = case argMass VU.! pred tag of
     (True, defs, nesArgsIndMass) ->
         let nesArgMass = nesArgsBD V.! nesArgsIndMass
-            nesteds = G.zip (V.fromList nesTags) nesArgMass
+            nesteds = G.zip nesTags nesArgMass
         in fmap (predDefs<->) $ fmap (defs<++>) $ G.foldl' calc MyNothing nesteds
 
     insErr -> MyLeft $ printf err (show cons) (show insErr)
@@ -95,7 +95,7 @@ calc (MyLeft lineErr) _ = MyLeft lineErr
 
 
 -- Что равносильно (Left Nothing) + True
-values = V.fromList [Cons 1 [ConsVoid 1], ConsVoid 2]
+values = V.fromList [Cons 1 (V.fromList [ConsVoid 1]), ConsVoid 2]
 
 funcSim :: V.Vector Cons -> String
 funcSim ins = (funcBD!!) . firstDef $ process ins argsBD
